@@ -1,0 +1,427 @@
+@import "tailwindcss";
+
+
+
+@theme {
+
+  /* 1. Core Colors & Semantic Tokens */
+
+  --color-bg-main: var(--bg-main);
+
+  --color-bg-surface: var(--bg-surface);
+
+  --color-bg-card: var(--bg-card);
+
+ 
+
+  --color-text-main: var(--text-main);
+
+  --color-text-sub: var(--text-sub);
+
+  --color-text-muted: var(--text-muted);
+
+ 
+
+  --color-border-main: var(--border-main);
+
+  --color-border-subtle: var(--border-subtle);
+
+
+
+  --color-accent-primary: var(--accent-primary);
+
+  --color-accent-secondary: var(--accent-secondary);
+
+  --color-accent-neon: #00C0FF; /* Neon Blue */
+
+
+
+  /* Category Colors (Maintain consistency) */
+
+  --color-category-db: #FACC15;
+
+  --color-category-os: #60A5FA;
+
+  --color-category-fe: #22D3EE;
+
+  --color-category-be: #4ADE80;
+
+  --color-category-network: #C084FC;
+
+  /* Hover Overlay Colors */
+  --color-hover-overlay-from: rgba(229, 231, 235, 0.8); /* Equivalent to gray-200/80 */
+  --color-hover-overlay-via: rgba(209, 213, 219, 0.5); /* Equivalent to gray-300/50 */
+
+  --color-category-dsa: #F472B6;
+
+
+
+  /* Typography Scale */
+
+  --font-sans: "Pretendard", "Inter", system-ui, sans-serif;
+
+ 
+
+  --font-size-h1: clamp(2rem, 3.5vw + 0.5rem, 4rem);
+
+  --font-size-h2: clamp(1.5rem, 2.5vw, 2.5rem);
+
+  --font-size-h3: 1.5rem;
+
+  --font-size-base: 1rem;
+
+  --font-size-sm: 0.875rem;
+
+  --font-size-xs: 0.75rem;
+
+
+
+  /* Spacing & Radii */
+
+  --radius-xl: 0.75rem;
+
+  --radius-2xl: 1rem;
+
+  --radius-3xl: 1.5rem;
+
+
+
+  /* Animations */
+
+  --animate-fade-in: fade-in 0.5s ease-out;
+
+  --animate-slide-up: slide-up 0.5s ease-out;
+
+  --animate-infinite-scroll: infinite-scroll 30s linear infinite;
+
+
+
+  @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+  @keyframes slide-up { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+  @keyframes infinite-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+}
+
+
+
+  /* Semantic color aliases used by Tailwind-generated CSS */
+  :root {
+    --color-bg-main: var(--bg-main);
+    --color-bg-surface: var(--bg-surface);
+    --color-bg-card: var(--bg-card);
+
+    --color-text-main: var(--text-main);
+    --color-text-sub: var(--text-sub);
+    --color-text-muted: var(--text-muted);
+
+    --color-border-main: var(--border-main);
+    --color-border-subtle: var(--border-subtle);
+
+    --color-accent-primary: var(--accent-primary);
+    --color-accent-secondary: var(--accent-secondary);
+    --color-accent-neon: #00C0FF;
+
+    /* helpful rgb variable used in some custom shadows */
+    --accent-primary-rgb: 59,130,246;
+  }
+
+/* 2. Theme Variables Definition (Default: Dark) */
+
+:root {
+
+  --bg-main: #000000;
+
+  --bg-surface: #09090B;
+
+  --bg-card: rgba(255, 255, 255, 0.03);
+
+ 
+
+  --text-main: #FFFFFF;
+
+  --text-sub: #A1A1AA;
+
+  --text-muted: #71717A;
+
+    --scroll-thumb: rgba(255, 255, 255, 0.2);
+    --stroke-color: #000000;
+
+  --border-main: rgba(255, 255, 255, 0.1);
+
+  --border-subtle: rgba(255, 255, 255, 0.05);
+
+
+
+  --accent-primary: #3B82F6;
+
+  --accent-secondary: #6366F1;
+
+
+
+  --scroll-track: rgba(255, 255, 255, 0.05);
+
+  --scroll-thumb: rgba(255, 255, 255, 0.2);
+
+}
+
+
+
+/* Mirror semantic aliases for light mode as well */
+:root.light, html.light, body.light {
+  --color-bg-main: var(--bg-main);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-card: var(--bg-card);
+
+  --color-text-main: var(--text-main);
+  --color-text-sub: var(--text-sub);
+  --color-text-muted: var(--text-muted);
+
+  --color-border-main: var(--border-main);
+  --color-border-subtle: var(--border-subtle);
+
+  --color-accent-primary: var(--accent-primary);
+  --color-accent-secondary: var(--accent-secondary);
+  --color-accent-neon: #00C0FF;
+
+  --accent-primary-rgb: 37,99,235;
+}
+
+/* (stroke-color set separately per theme) */
+
+/* 3. Light Mode Overrides */
+
+:root.light, html.light, body.light {
+  --bg-main: #FFFFFF;
+  --bg-surface: #F9FAFB;
+  --bg-card: rgba(0, 0, 0, 0.02);
+
+  --stroke-color: #FFFFFF;
+
+ 
+
+  --text-main: #09090B;
+
+  --text-sub: #52525B;
+
+  --text-muted: #A1A1AA;
+
+ 
+
+  --border-main: rgba(0, 0, 0, 0.1);
+
+  --border-subtle: rgba(0, 0, 0, 0.05);
+
+
+
+  --accent-primary: #2563EB;
+
+  --accent-secondary: #4F46E5;
+
+
+
+  --scroll-track: rgba(0, 0, 0, 0.05);
+
+  --scroll-thumb: rgba(0, 0, 0, 0.2);
+
+}
+
+
+
+@layer base {
+
+    body {
+
+      @apply scrollbar-hide bg-bg-main text-text-main font-sans min-h-screen transition-colors duration-300 m-0 p-0 overflow-x-hidden;
+
+    }
+
+ 
+
+  html {
+
+    scroll-behavior: smooth;
+
+  }
+
+
+
+  h1 {
+
+    font-size: var(--font-size-h1);
+
+    @apply font-black tracking-tighter uppercase leading-[1.1];
+
+  }
+
+
+
+  h2 {
+
+    font-size: var(--font-size-h2);
+
+    @apply font-black tracking-tighter uppercase;
+
+  }
+
+
+
+  h3 {
+
+    font-size: var(--font-size-h3);
+
+    @apply font-bold tracking-tight;
+
+  }
+
+  }
+
+
+
+/* Glassmorphism UI Base */
+
+@utility glass-ui {
+
+  @apply backdrop-blur-xl bg-bg-card border border-border-main shadow-2xl;
+
+}
+
+
+
+/* Standard Card */
+
+@utility card-standard {
+
+  @apply rounded-3xl overflow-hidden relative glass-ui;
+
+}
+
+
+
+/* Primary Button Style */
+
+@utility btn-primary {
+
+  @apply px-6 py-3 rounded-xl font-bold transition-all duration-200 active:scale-95 flex items-center justify-center gap-2;
+
+  @apply bg-accent-primary text-white hover:bg-accent-primary/90 shadow-lg shadow-accent-primary/20;
+
+}
+
+
+
+/* Secondary Button Style */
+
+@utility btn-secondary {
+
+  @apply px-6 py-3 rounded-xl font-bold transition-all duration-200 active:scale-95 flex items-center justify-center gap-2;
+
+  @apply bg-bg-surface border border-border-main text-text-sub hover:text-text-main;
+
+}
+
+
+
+/* Accent Button Style */
+
+@utility btn-accent {
+
+  @apply px-6 py-3 rounded-xl font-bold transition-all duration-200 active:scale-95 flex items-center justify-center gap-2;
+
+  @apply bg-accent-primary text-white hover:bg-accent-primary/90 shadow-lg shadow-accent-primary/20;
+
+}
+
+
+
+/* Custom Scrollbar */
+
+@utility custom-scrollbar {
+
+  &::-webkit-scrollbar { width: 8px; }
+
+  &::-webkit-scrollbar-track { background: var(--scroll-track); border-radius: 4px; }
+
+  &::-webkit-scrollbar-thumb { background-color: var(--scroll-thumb); border-radius: 4px; }
+
+  &::-webkit-scrollbar-thumb:hover { background-color: var(--text-sub); }
+
+}
+
+
+
+@utility scrollbar-hide {
+
+  -ms-overflow-style: none;
+
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar { display: none; }
+
+}
+
+
+
+/* Custom Utility for Content Shift (Sidebar) */
+
+@utility content-shift {
+
+  transition: padding-left 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  @media (min-width: 1024px) {
+
+    padding-left: 320px;
+
+  }
+
+}
+
+
+
+
+
+.custom-scrollbar::-webkit-scrollbar-track {
+
+  background: var(--scroll-track);
+
+  border-radius: 4px;
+
+}
+
+
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+
+  background-color: var(--scroll-thumb);
+
+  border-radius: 4px;
+
+}
+
+
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+
+  background-color: var(--text-sub); /* 호버 시에는 서브 텍스트 컬러 활용 */
+
+}
+
+
+/* Force-hide all scrollbars globally (fallback for components using their own scrollbars) */
+* {
+  -ms-overflow-style: none !important; /* IE and Edge */
+  scrollbar-width: none !important; /* Firefox */
+}
+
+*::-webkit-scrollbar {
+  display: none !important; /* Chrome, Safari, Opera */
+}
+
+* {
+  caret-color: transparent;
+}
+
+input, textarea, [contenteditable="true"] {
+  caret-color: auto;
+}

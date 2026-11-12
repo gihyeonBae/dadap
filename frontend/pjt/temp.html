@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>AI 면접 코칭: 하이브리드 분석 (Clean Mode)</title>
+    <style>
+        body { font-family: 'Suit', -apple-system, BlinkMacSystemFont, sans-serif; background-color: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        h2 { color: #1a1a1a; margin-bottom: 10px; }
+        .description { font-size: 14px; color: #666; margin-bottom: 20px; text-align: center; }
+        
+        /* 컨테이너: 비디오와 캔버스를 겹쳐둠 */
+        .container { position: relative; width: 640px; height: 480px; background: #000; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.15); }
+        video { position: absolute; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); } /* 거울모드 */
+        canvas { position: absolute; width: 100%; height: 100%; transform: scaleX(-1); } /* 캔버스도 거울모드 */
+        
+        .controls { margin-top: 25px; gap: 15px; display: flex; }
+        button { padding: 14px 28px; font-size: 16px; border: none; border-radius: 50px; cursor: pointer; transition: all 0.2s; font-weight: 700; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        button:active { transform: scale(0.95); }
+        #startBtn { background: linear-gradient(135deg, #4CAF50, #45a049); color: white; }
+        #stopBtn { background: linear-gradient(135deg, #ff5252, #f44336); color: white; display: none; }
+        button:disabled { background: #ccc; cursor: not-allowed; box-shadow: none; }
+
+        .status-msg { margin-top: 15px; font-size: 15px; color: #555; font-weight: 500; height: 24px; }
+
+        /* 결과 리포트 영역 */
+        #resultArea { margin-top: 30px; width: 640px; background: white; padding: 30px; border-radius: 16px; display: none; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+        .result-header { font-size: 20px; font-weight: bold; margin-bottom: 20px; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; color: #333; }
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .stat-card { background: #f8f9fa; padding: 15px; border-radius: 12px; }
+        .stat-label { font-size: 13px; color: #888; margin-bottom: 5px; display: block; }
+        .stat-value { font-size: 24px; font-weight: 800; color: #333; }
+        .stat-desc { font-size: 12px; color: #666; margin-top: 5px; }
+        
+        /* 텍스트 색상 유틸 */
+        .text-blue { color: #2196F3; } /* 좋은 점수 */
+        .text-red { color: #f44336; }  /* 나쁜 점수 */
+    </style>
+</head>
+<body>
+
+    <h2>🎥 AI 면접 하이브리드 분석기</h2>
+    <p class="description">
+        화면에 표시되는 요소 없이 <b>내 얼굴만 보며</b> 실전처럼 연습하세요.<br>
+        (분석은 보이지 않는 곳에서 계속 진행됩니다)
+    </p>
+    
+    <div class="status-msg" id="statusText">AI 모델 로딩 중... 잠시만 기다려주세요.</div>
+
+    <div class="container">
+        <video id="webcam" autoplay playsinline></video>
+        <canvas id="output_canvas"></canvas>
+    </div>
+
+    <div class="controls">
+        <button id="startBtn" disabled>답변 시작 (녹화)</button>
+        <button id="stopBtn">답변 종료 (결과 보기)</button>
+    </div>
+
+    <!-- 결과 리포트 -->
+    <div id="resultArea">
+        <div class="result-header">📊 면접 분석 리포트</div>
+        <div class="stat-grid">
+            <div class="stat-card">
+                <span class="stat-label">👁️ 시선 유지율 (눈동자 기준)</span>
+                <span class="stat-value" id="resEyeScore">0%</span>
+                <div class="stat-desc">80% 이상: 좋음 / 80% 이하: 주의 필요</div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">👤 자세 안정성 (코 기준)</span>
+                <span class="stat-value" id="resPoseScore">0%</span>
+                <div class="stat-desc">80% 이상: 좋음 / 고개 기울임 주의</div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">😊 표정 분석 (Top 3)</span>
+                <span class="stat-value" id="resEmotion" style="font-size: 20px; line-height: 1.4;">-</span>
+                <div class="stat-desc">빈도가 높은 상위 3개 표정입니다.</div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">👋 누적 뒤척임 지수 (낮을수록 좋음)</span>
+                <span class="stat-value" id="resMovement">0점</span>
+                <div class="stat-desc">100점 미만: 안정 / 100점 이상: 산만함</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MediaPipe Script -->
+    <script type="module">
+        import {
+            FaceLandmarker,
+            FilesetResolver,
+            DrawingUtils
+        } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/vision_bundle.js";
+
+        const video = document.getElementById("webcam");
+        const canvasElement = document.getElementById("output_canvas");
+        const canvasCtx = canvasElement.getContext("2d");
+        const statusText = document.getElementById("statusText");
+        const startBtn = document.getElementById("startBtn");
+        const stopBtn = document.getElementById("stopBtn");
+        const resultArea = document.getElementById("resultArea");
+
+        let faceLandmarker;
+        let lastVideoTime = -1;
+        let isRecording = false;
+        
+        // 데이터 저장소
+        let startTime = 0;
+        let recordedData = [];
+        let prevNose = null; // 뒤척임 계산용
+
+        // [설정] 프론트엔드에서 관리하는 면접 ID 및 턴 ID
+        // 이 값을 변경하여 서버로 전송되는 ID를 조절하세요.
+        let currentInterviewId = 101; 
+        let currentTurnId = 1;
+
+        // 1. 모델 로드
+        async function createFaceLandmarker() {
+            const filesetResolver = await FilesetResolver.forVisionTasks(
+                "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm"
+            );
+            faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+                baseOptions: {
+                    modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
+                    delegate: "GPU"
+                },
+                outputFaceBlendshapes: true, // 표정 분석
+                runningMode: "VIDEO",
+                numFaces: 1
+            });
+            statusText.innerText = "카메라 권한을 허용해주세요.";
+            enableCam();
+        }
+
+        // 2. 웹캠 시작
+        function enableCam() {
+            if (!faceLandmarker) return;
+            navigator.mediaDevices.getUserMedia({ video: true }).then((stream) => {
+                video.srcObject = stream;
+                video.addEventListener("loadeddata", predictWebcam);
+                statusText.innerText = "준비 완료! '답변 시작'을 누르세요.";
+                startBtn.disabled = false;
+            });
+        }
+
+        // 버튼 이벤트
+        startBtn.addEventListener("click", () => {
+            isRecording = true;
+            recordedData = [];
+            startTime = Date.now();
+            prevNose = null;
+            startBtn.style.display = "none";
+            stopBtn.style.display = "inline-block";
+            resultArea.style.display = "none";
+            statusText.innerText = "🔴 분석 중... 화면을 편안하게 응시하세요.";
+        });
+
+        stopBtn.addEventListener("click", () => {
+            isRecording = false;
+            startBtn.style.display = "inline-block";
+            stopBtn.style.display = "none";
+            statusText.innerText = "분석 완료!";
+            
+            // 1. 결과 화면 보여주기
+            analyzeAndShowResults();
+            
+            // 2. 서버로 데이터 전송하기
+            sendDataToServer();
+        });
+
+        // 3. 메인 분석 루프
+        async function predictWebcam() {
+            // 캔버스 사이즈 동기화
+            canvasElement.width = video.videoWidth;
+            canvasElement.height = video.videoHeight;
+
+            if (lastVideoTime !== video.currentTime) {
+                lastVideoTime = video.currentTime;
+                const startTimeMs = performance.now();
+                
+                if (faceLandmarker) {
+                    const results = faceLandmarker.detectForVideo(video, startTimeMs);
+                    
+                    // 캔버스 초기화
+                    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
+                    if (results.faceLandmarks.length > 0) {
+                        const landmarks = results.faceLandmarks[0];
+                        const blendshapes = results.faceBlendshapes[0];
+
+                        // --- 하이브리드 로직 적용 ---
+                        const eyeStatus = checkEyeGaze(landmarks); // 눈
+                        const poseStatus = checkHeadPose(landmarks); // 자세
+                        const movementScore = calculateMovement(landmarks); // 움직임
+                        const emotion = getTopEmotion(blendshapes); // 표정
+
+                        // --- 데이터 기록 ---
+                        if (isRecording) {
+                            recordedData.push({
+                                timestamp: Date.now(),
+                                eyeStatus,
+                                poseStatus,
+                                movementScore,
+                                emotion
+                            });
+                        }
+                    }
+                }
+            }
+            window.requestAnimationFrame(predictWebcam);
+        }
+
+        // =========================================
+        // 🧠 분석 알고리즘 (Scoring Logic)
+        // =========================================
+
+        function getDistance(p1, p2) {
+            return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+        }
+
+        // A. [눈 기준] 시선(Gaze) 처리
+        function checkEyeGaze(landmarks) {
+            const leftEyeOuter = landmarks[33];
+            const leftEyeInner = landmarks[133];
+            const leftIris = landmarks[468];
+
+            if(!leftIris) return "CENTER"; 
+
+            const eyeWidth = getDistance(leftEyeOuter, leftEyeInner);
+            const distToInner = getDistance(leftIris, leftEyeInner);
+            const ratio = distToInner / eyeWidth;
+
+            // 눈동자가 눈의 중앙 35% ~ 65% 위치에 있으면 정면 응시로 간주
+            if (ratio > 0.35 && ratio < 0.65) {
+                return "CENTER";
+            } else {
+                return "AWAY"; 
+            }
+        }
+
+        // B. [코 기준] 자세(Pose) 처리
+        function checkHeadPose(landmarks) {
+            const nose = landmarks[1];
+            const leftCheek = landmarks[454];
+            const rightCheek = landmarks[234];
+
+            // 얼굴 너비 (기준점)
+            const faceWidth = Math.abs(rightCheek.x - leftCheek.x);
+            
+            // 1. 좌우 회전 (Yaw) 체크
+            const faceCenterX = (leftCheek.x + rightCheek.x) / 2;
+            const diffX = Math.abs(nose.x - faceCenterX);
+            const isYawBad = (diffX / faceWidth) > 0.10; // 10% 이상 틀어지면 Bad
+
+            // 2. 고개 기울기 (Roll) 체크
+            const diffY = Math.abs(rightCheek.y - leftCheek.y);
+            const isRollBad = (diffY / faceWidth) > 0.15; // 15% 이상 기울면 Bad
+
+            if (isYawBad || isRollBad) {
+                return "BAD";
+            } else {
+                return "GOOD";
+            }
+        }
+
+        // C. 뒤척임(Movement) 계산
+        function calculateMovement(landmarks) {
+            const nose = landmarks[1];
+            let score = 0;
+            if (prevNose) {
+                // 이전 프레임과의 거리 차이
+                const dist = Math.sqrt(Math.pow(nose.x - prevNose.x, 2) + Math.pow(nose.y - prevNose.y, 2));
+                
+                // [노이즈 필터] 미세한 떨림은 무시하고 일정 수준 이상일 때만 점수 누적
+                if (dist > 0.002) {
+                    score = dist * 100;
+                }
+            }
+            prevNose = { x: nose.x, y: nose.y };
+            return score;
+        }
+
+        // D. 표정 추출
+        function getTopEmotion(blendshapes) {
+            const categories = blendshapes.categories;
+            let top = "neutral";
+            let max = 0;
+            categories.forEach(c => {
+                if (c.categoryName !== 'neutral' && c.score > 0.3 && c.score > max) {
+                    max = c.score;
+                    top = c.categoryName;
+                }
+            });
+            return top;
+        }
+
+        // =========================================
+        // 📊 결과 계산 및 UI 표시
+        // =========================================
+        function calculateStatistics() {
+            const totalFrames = recordedData.length;
+            if (totalFrames === 0) return null;
+
+            // 시선, 자세 점수
+            const eyePass = recordedData.filter(d => d.eyeStatus === "CENTER").length;
+            const posePass = recordedData.filter(d => d.poseStatus === "GOOD").length;
+            
+            // 표정 통계
+            const emoCount = {};
+            recordedData.forEach(d => {
+                emoCount[d.emotion] = (emoCount[d.emotion] || 0) + 1;
+            });
+            const sortedEmotions = Object.keys(emoCount).sort((a, b) => emoCount[b] - emoCount[a]);
+            const emotionTop3 = sortedEmotions.slice(0, 3).map(emo => ({
+                emotion: emo,
+                percent: Math.floor((emoCount[emo] / totalFrames) * 100)
+            }));
+            const mainEmotion = sortedEmotions.length > 0 ? sortedEmotions[0] : "neutral";
+
+            // 뒤척임 점수 (낮을수록 좋음)
+            const totalMove = recordedData.reduce((acc, cur) => acc + cur.movementScore, 0);
+
+            return {
+                totalFrames: totalFrames,
+                durationSec: Math.floor((Date.now() - startTime) / 1000),
+                eyeScore: Math.floor((eyePass / totalFrames) * 100),
+                poseScore: Math.floor((posePass / totalFrames) * 100),
+                moveScore: Math.floor(totalMove),
+                mainEmotion: mainEmotion,
+                emotionTop3: emotionTop3
+            };
+        }
+
+        function analyzeAndShowResults() {
+            const stats = calculateStatistics();
+            if (!stats) return;
+
+            // UI 표시
+            document.getElementById("resEyeScore").innerText = stats.eyeScore + "%";
+            document.getElementById("resPoseScore").innerText = stats.poseScore + "%";
+            
+            // 표정 HTML 생성
+            let emotionHtml = "";
+            if (stats.emotionTop3.length > 0) {
+                stats.emotionTop3.forEach((item, index) => {
+                    const kName = translateEmotion(item.emotion);
+                    if (index === 0) {
+                        emotionHtml += `<div>${kName} <span style="font-size:0.8em; color:#666;">(${item.percent}%)</span></div>`;
+                    } else {
+                        emotionHtml += `<div style="font-size:16px; color:#555; margin-top:4px;">${kName} <span style="font-size:0.9em;">(${item.percent}%)</span></div>`;
+                    }
+                });
+            } else {
+                emotionHtml = "-";
+            }
+            document.getElementById("resEmotion").innerHTML = emotionHtml; 
+            document.getElementById("resMovement").innerText = stats.moveScore + "점";
+
+            // 색상 강조 로직 (기준점)
+            // 시선/자세: 80점 초과면 파랑(Good), 아니면 빨강(Bad)
+            document.getElementById("resEyeScore").className = "stat-value " + (stats.eyeScore > 80 ? "text-blue" : "text-red");
+            document.getElementById("resPoseScore").className = "stat-value " + (stats.poseScore > 80 ? "text-blue" : "text-red");
+            
+            // 움직임: 100점 미만이면 파랑(Good/Stable), 이상이면 빨강(Bad/Distracted)
+            document.getElementById("resMovement").className = "stat-value " + (stats.moveScore < 100 ? "text-blue" : "text-red");
+
+            resultArea.style.display = "block";
+        }
+
+        // =========================================
+        // 🚀 데이터 전송 (JSON 구조 맞춤)
+        // =========================================
+
+        function sendDataToServer() {
+            const stats = calculateStatistics();
+            if (!stats) return;
+
+            // [수정됨] 요청하신 JSON 구조로 생성
+            const payload = {
+                interview_id: currentInterviewId, // 101
+                turn_id: currentTurnId,           // 1
+                summary: {
+                    duration: stats.durationSec,
+                    eyeContactScore: stats.eyeScore,      // 이름 매핑
+                    poseStabilityScore: stats.poseScore,  // 이름 매핑
+                    movementScore: stats.moveScore,
+                    mainEmotion: stats.mainEmotion,
+                    emotionTop3: stats.emotionTop3
+                }
+            };
+
+            // F12 콘솔에서 확인 가능
+            console.log("📤 [전송 준비] 최종 JSON 데이터:", JSON.stringify(payload, null, 2));
+            alert("분석이 완료되었습니다! (F12 콘솔에서 JSON 데이터를 확인하세요)");
+            
+            // TODO: 실제 서버 전송 시 아래 주석을 해제하고 사용하세요.
+            /*
+            fetch('YOUR_SERVER_API_URL', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            */
+        }
+
+        function translateEmotion(eng) {
+            const map = {
+                'neutral': '무표정 😐',
+                'smile': '미소 😊',
+                'mouthSmileLeft': '미소 😊',
+                'mouthSmileRight': '미소 😊',
+                'cheekSquintLeft': '활짝 웃음 😆',
+                'cheekSquintRight': '활짝 웃음 😆',
+                'browDownLeft': '인상 씀 😠',
+                'browDownRight': '인상 씀 😠',
+                'mouthFrownLeft': '입꼬리 내림 ☹️',
+                'mouthFrownRight': '입꼬리 내림 ☹️',
+                'noseSneerLeft': '찡그림 😖',
+                'noseSneerRight': '찡그림 😖',
+                'eyeBlinkLeft': '눈 깜빡임 😌',
+                'eyeBlinkRight': '눈 깜빡임 😌',
+                'eyeWideLeft': '눈 크게 뜸 😳',
+                'eyeWideRight': '눈 크게 뜸 😳',
+                'browInnerUp': '눈썹 올림 😯',
+                'browOuterUpLeft': '눈썹 치켜뜸 🤨',
+                'browOuterUpRight': '눈썹 치켜뜸 🤨',
+                'jawOpen': '입 벌림 😮',
+                'mouthPucker': '입 오므림 😗',
+                'mouthOpen': '입 벌림 😮',
+                'mouthFunnel': '입 벌림 😮',
+                'mouthPressLeft': '입 다묾 🤐',
+                'mouthPressRight': '입 다묾 🤐',
+                'mouthDimpleLeft': '보조개 😉',
+                'mouthDimpleRight': '보조개 😉'
+            };
+            return map[eng] || eng;
+        }
+
+        createFaceLandmarker();
+    </script>
+</body>
+</html>

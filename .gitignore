@@ -1,0 +1,9 @@
+.env
+.env.*
+!.env.example
+
+# OS files
+.DS_Store
+
+# Local response sample containing signed AWS URLs
+/frontend/pjt/reportreturn.json

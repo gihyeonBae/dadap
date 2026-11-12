@@ -1,0 +1,15 @@
+package com.example.dapdap.users.domain;
+
+public enum JobTitle {
+    FRONTEND_DEVELOPER,
+    BACKEND_DEVELOPER,
+    FULLSTACK_DEVELOPER,
+    ANDROID_DEVELOPER,
+    IOS_DEVELOPER,
+    DEVOPS_ENGINEER,
+    DATA_ENGINEER,
+    ML_ENGINEER,
+    DESIGNER,
+    PRODUCT_MANAGER,
+    ETC
+}
